@@ -2,9 +2,17 @@
 
 Aplicativo Flutter/Dart baseado no wireframe do Figma, com dados da CryptoCompare em BRL.
 
+## Material para a entrega
+
+- [Resumo da entrega e identificação da dupla](docs/ENTREGA.md).
+- [Lista de pendências e limitações atuais](docs/PENDENCIAS.md).
+- [Prints de todas as telas e formulários](docs/TELAS.md).
+
+Os nomes da dupla são preenchidos em `docs/ENTREGA.md`. Um integrante envia a entrega incluindo o nome do colega.
+
 ## Abrir agora
 
-- **Windows:** execute `ABRIR-CRYPTOHUB.cmd`. Ele abre a versão compilada, quando disponível.
+- **Windows:** execute `ABRIR-CRYPTOHUB.cmd`. Ele abre a versão compilada, quando disponível; caso contrário, procura Flutter no PATH e depois no caminho local descrito abaixo.
 - **Android:** instale `build/app/outputs/flutter-apk/app-debug.apk` no seu celular ou emulador.
 - **Prévia web:** a pasta compilada é `build/web`; sirva-a por HTTP, em vez de abrir o HTML diretamente.
 
@@ -116,7 +124,7 @@ As validações incluem campos nulos, números inválidos, timestamps Unix, cach
 
 Android, web e Windows foram compilados neste computador. O projeto inclui iOS, cuja compilação exige macOS/Xcode e não foi executada aqui.
 
-A suíte final passou com 144 testes em 04/10/2026. `flutter analyze` terminou sem problemas.
+A última verificação local, em 05/10/2026, passou com 144 testes. `flutter analyze` terminou sem problemas.
 
 Após alterar o código, compile novamente a plataforma desejada. `ABRIR-CRYPTOHUB.cmd` abre o último executável compilado.
 
