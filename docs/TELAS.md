@@ -2,7 +2,7 @@
 
 Capturas da versão web do aplicativo em 05/10/2026. A galeria cobre as **11 telas e diálogos** existentes, em **16 imagens**, incluindo os trechos que exigem rolagem.
 
-As cotações, o catálogo, as notícias e os gráficos foram consultados na API real da CryptoCompare. As quantidades de **0,025 BTC** e **0,5 ETH** são exemplos para demonstrar a carteira virtual; não representam compras. A chave foi informada somente na sessão e não aparece nas imagens.
+As cotações, o catálogo, as notícias e os gráficos foram consultados na API real da CryptoCompare. As quantidades de **0,025 BTC** e **0,5 ETH** são exemplos para demonstrar a carteira virtual; não representam compras. A lista de chaves fica no armazenamento seguro do aparelho e não aparece nas imagens nem nos arquivos do projeto.
 
 Os valores e horários registram o momento de cada consulta. A API retornou notícias antigas, cujas datas foram mantidas. Houve um limite temporário na consulta de histórico da carteira; a nova tentativa carregou o gráfico mostrado abaixo.
 

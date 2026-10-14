@@ -19,7 +19,7 @@ Apenas um integrante da dupla deve realizar a entrega e incluir o nome do colega
 
 O CryptoHub é um aplicativo Flutter/Dart para acompanhar criptomoedas em reais. Inclui mercado, pesquisa de moedas, favoritos, detalhes com gráficos, carteira virtual e notícias em português. Utiliza a API da CryptoCompare e guarda favoritos, quantidades e últimas cotações no dispositivo.
 
-As consultas reais exigem uma chave válida da API, informada pelo usuário na sessão. A evolução da carteira é uma simulação baseada nas quantidades atuais; não representa o retorno de compras reais. As instruções para executar e demonstrar o aplicativo estão no [README](../README.md).
+As consultas reais exigem chaves válidas da API, configuradas pelo usuário e armazenadas com proteção no aparelho. A evolução da carteira é uma simulação baseada nas quantidades atuais; não representa o retorno de compras reais. As instruções para executar e demonstrar o aplicativo estão no [README](../README.md).
 
 ## Antes de enviar
 

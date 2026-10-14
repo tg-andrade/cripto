@@ -18,30 +18,38 @@ class _ApiKeySheet extends StatefulWidget {
 }
 
 class _ApiKeySheetState extends State<_ApiKeySheet> {
-  final _key = TextEditingController();
-  bool _obscured = true, _saving = false;
+  final _keys = TextEditingController();
+  bool _saving = false;
   String? _error;
   @override
   void dispose() {
-    _key.dispose();
+    _keys.dispose();
     super.dispose();
   }
 
   Future<void> _save() async {
-    if (_key.text.trim().isEmpty) {
-      setState(() => _error = 'Informe a chave da CryptoCompare.');
+    final keys = _keys.text
+        .split(RegExp(r'[\s,;]+'))
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (keys.isEmpty) {
+      setState(() => _error = 'Cole ao menos uma chave da CryptoCompare.');
       return;
     }
     setState(() {
       _saving = true;
       _error = null;
     });
-    await widget.controller.setApiKey(_key.text.trim());
+    await widget.controller.setApiKeys(keys);
     if (!mounted) return;
-    if (widget.controller.marketError != null) {
+    if (widget.controller.apiKeyStorageError != null ||
+        widget.controller.marketError != null) {
       setState(() {
         _saving = false;
-        _error = widget.controller.marketError;
+        _error = widget.controller.apiKeyStorageError ??
+            widget.controller.marketError;
       });
       return;
     }
@@ -69,37 +77,30 @@ class _ApiKeySheetState extends State<_ApiKeySheet> {
           ),
           const SizedBox(height: 10),
           const Text(
-            'Use a chave gerada em sua conta da CryptoCompare. Ela será usada nesta sessão. A configuração de desenvolvimento está no README do projeto.',
+            'Cole a lista uma única vez. O app salva as chaves com proteção neste aparelho, carrega automaticamente ao abrir e alterna entre elas nas consultas. Elas não são incluídas no código nem no GitHub.',
           ),
           const SizedBox(height: 20),
           TextField(
             key: const ValueKey('api-key-input'),
-            controller: _key,
+            controller: _keys,
             enabled: !_saving,
             enableIMEPersonalizedLearning: false,
-            obscureText: _obscured,
+            minLines: 3,
+            maxLines: 7,
             autocorrect: false,
             enableSuggestions: false,
             decoration: InputDecoration(
-              labelText: 'Chave da API',
+              labelText: 'Chaves da API',
+              hintText: 'Uma chave por linha',
               errorText: _error,
               errorMaxLines: 5,
-              suffixIcon: IconButton(
-                tooltip: _obscured ? 'Mostrar chave' : 'Ocultar chave',
-                onPressed: () => setState(() => _obscured = !_obscured),
-                icon: Icon(
-                  _obscured
-                      ? Icons.visibility_outlined
-                      : Icons.visibility_off_outlined,
-                ),
-              ),
             ),
           ),
           const SizedBox(height: 12),
           Text(
             widget.controller.hasApiKey
-                ? 'Uma chave já está configurada. Salvar substitui o acesso nesta sessão.'
-                : 'Encontre sua chave em CryptoCompare → API → API keys.',
+                ? '${widget.controller.apiKeyCount} chave(s) carregada(s) neste aparelho. Salvar substitui a lista.'
+                : 'Encontre suas chaves em CryptoCompare → API → API keys.',
             style: Theme.of(context).textTheme.bodySmall,
           ),
           const SizedBox(height: 24),

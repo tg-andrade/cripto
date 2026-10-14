@@ -16,7 +16,7 @@ Os nomes da dupla são preenchidos em `docs/ENTREGA.md`. Um integrante envia a e
 - **Android:** instale `build/app/outputs/flutter-apk/app-debug.apk` no seu celular ou emulador.
 - **Prévia web:** a pasta compilada é `build/web`; sirva-a por HTTP, em vez de abrir o HTML diretamente.
 
-Na primeira abertura, toque no ícone de ajustes e informe sua chave da CryptoCompare. A chave digitada fica apenas na sessão. Favoritos, quantidades e últimas cotações ficam salvos no dispositivo.
+Na primeira configuração, toque no ícone de ajustes e cole suas chaves da CryptoCompare, uma por linha. O aplicativo salva a lista no armazenamento seguro deste aparelho, carrega-a ao abrir e alterna entre as chaves automaticamente. Favoritos, quantidades e últimas cotações também ficam salvos no dispositivo.
 
 A consulta real sem chave retornou HTTP 401. Na revisão de 04/10/2026, a chave fornecida respondeu a consultas de preços, catálogo, notícias e históricos diário e por minuto. Um limite temporário de consultas também foi observado; o aplicativo mostra esse erro e preserva as cotações salvas. A chave não foi gravada no código nem nos arquivos compilados.
 
@@ -58,7 +58,7 @@ Também é possível configurar a chave durante a execução/compilação:
 flutter run -d windows --dart-define=CRYPTOCOMPARE_API_KEY=SUA_CHAVE
 ```
 
-A chave passada por `dart-define` fica embutida no aplicativo. O formulário de ajustes evita gravá-la em preferências locais. Não publique arquivos com sua chave.
+A chave passada por `dart-define` fica embutida no aplicativo. Para uso local, prefira configurar pelo formulário: as chaves ficam no armazenamento seguro do aparelho, não em preferências comuns nem no repositório. Não publique arquivos com suas chaves.
 
 ## Funcionalidades
 
@@ -108,7 +108,7 @@ Base: `https://min-api.cryptocompare.com/data/`
 
 O gráfico de 1D usa registros por hora; os demais períodos usam registros diários. O método de histórico por minuto está disponível no serviço.
 
-No Android, iOS e Windows, a chave vai no cabeçalho `Authorization: Apikey …`. Na web, é enviada pelo parâmetro `api_key`, aceito pela API, para evitar a consulta prévia de autenticação que o navegador bloqueia. Há limite de tempo de 15 segundos, tratamento de HTTP 401/403/429/5xx, erros JSON da API e requisições em lotes.
+No Android, iOS e Windows, cada chamada usa uma chave do conjunto no cabeçalho `Authorization: Apikey …`. Na web, ela é enviada pelo parâmetro `api_key`, aceito pela API, para evitar a consulta prévia de autenticação que o navegador bloqueia. Em caso de limite (429) ou chave recusada, o serviço tenta as demais chaves configuradas. A API ainda pode compartilhar cotas entre chaves da mesma conta. Há limite de tempo de 15 segundos, tratamento de erros HTTP e JSON e requisições em lotes.
 
 ## Verificar e compilar
 
@@ -124,14 +124,14 @@ As validações incluem campos nulos, números inválidos, timestamps Unix, cach
 
 Android, web e Windows foram compilados neste computador. O projeto inclui iOS, cuja compilação exige macOS/Xcode e não foi executada aqui.
 
-A última verificação local, em 05/10/2026, passou com 144 testes. `flutter analyze` terminou sem problemas.
+A análise estática mais recente, em 13/10/2026, terminou sem problemas. A última execução da suíte, em 05/10/2026, passou com 144 testes.
 
 Após alterar o código, compile novamente a plataforma desejada. `ABRIR-CRYPTOHUB.cmd` abre o último executável compilado.
 
 ## Correções da revisão
 
 - Edições de favoritos e carteira informam o resultado da própria gravação e só aparecem como salvas depois do sucesso. Uma falha de leitura bloqueia edições até a recuperação dos dados locais.
-- Respostas obtidas com uma chave anterior são descartadas. Mercado, notícias e catálogo repetem a consulta com a chave atual; detalhes e histórico também protegem seus resultados.
+- Respostas obtidas com uma configuração anterior de chaves são descartadas. Mercado, notícias, catálogo, detalhes e histórico repetem a consulta com a configuração atual.
 - Respostas parciais preservam preços anteriores com a data de atualização de cada moeda. A carteira exige cotações da mesma consulta para somar seu total; preços zero/negativos não representam um ativo sem valor.
 - Preços inferiores a um centavo mantêm precisão visível. Gráficos permitem selecionar registros com a mesma data e interrompem a linha em preços inválidos, zero ou negativos. Texto ampliado recebe espaço para leitura.
 - O formulário de quantidade consulta o preço de moedas fora da lista principal. Chaves recusadas mantêm o formulário aberto com o erro; buscas reutilizam o catálogo já carregado.

@@ -57,6 +57,8 @@ class AppController extends ChangeNotifier {
   bool get hasCachedQuotes =>
       _quotes.values.any((quote) => _usablePrice(quote));
   bool get hasApiKey => api.hasApiKey;
+  int get apiKeyCount => api.apiKeys.length;
+  String? get apiKeyStorageError => _apiKeyStorageError;
   int get apiKeyRevision => _apiKeyRevision;
   bool get offline => _offline;
   String? get marketError => _marketError;
@@ -84,6 +86,7 @@ class AppController extends ChangeNotifier {
   bool _newsRequested = false;
   bool _catalogRequested = false;
   String? _marketError;
+  String? _apiKeyStorageError;
   String? _newsError;
   String? _catalogError;
   String? _userStorageError;
@@ -164,6 +167,15 @@ class AppController extends ChangeNotifier {
   }
 
   Future<void> _initialize() async {
+    try {
+      final savedKeys = await storage.readApiKeys();
+      if (!_disposed && savedKeys.isNotEmpty) api.updateApiKeys(savedKeys);
+    } catch (_) {
+      if (!_disposed) {
+        _apiKeyStorageError =
+            'Não foi possível carregar as chaves salvas neste aparelho.';
+      }
+    }
     await _loadSavedData();
     if (!_disposed) await refreshMarket();
   }
@@ -470,12 +482,29 @@ class AppController extends ChangeNotifier {
     }
   }
 
-  Future<void> setApiKey(String value) async {
+  Future<void> setApiKey(String value) => setApiKeys([value]);
+
+  Future<void> setApiKeys(Iterable<String> values) async {
     if (_disposed) return;
-    final trimmed = value.trim();
-    if (api.apiKey != trimmed) _apiKeyRevision++;
+    final keys = values
+        .map((value) => value.trim())
+        .where((value) => value.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    final previousConfiguration = api.keyConfigurationRevision;
+    api.updateApiKeys(keys);
+    try {
+      await storage.saveApiKeys(keys);
+      _apiKeyStorageError = null;
+    } catch (_) {
+      _apiKeyStorageError =
+          'As chaves funcionam nesta sessão, mas não foi possível salvá-las neste aparelho.';
+    }
+    if (_disposed) return;
+    if (api.keyConfigurationRevision != previousConfiguration) {
+      _apiKeyRevision++;
+    }
     final revision = _apiKeyRevision;
-    api.updateApiKey(trimmed);
     _marketError = null;
     _notify();
     // The shared request retries internally if its original key was replaced.

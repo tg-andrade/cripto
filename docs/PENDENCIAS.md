@@ -13,7 +13,7 @@ O código, as instruções de execução e a arquitetura estão descritos no [RE
 
 | Item | Situação atual | Ação, se necessária |
 | --- | --- | --- |
-| Acesso à API | As consultas reais dependem de internet e de uma chave válida da CryptoCompare. A chave informada no formulário vale somente para a sessão. A API pode limitar consultas. | Informar uma chave própria na demonstração; se houver limite, aguardar e tentar novamente. |
+| Acesso à API | As consultas reais dependem de internet e de chaves válidas da CryptoCompare. A lista é salva no armazenamento seguro do aparelho e carregada automaticamente; ela não é sincronizada com outros aparelhos nem enviada ao GitHub. A API pode compartilhar cotas entre chaves da mesma conta e limitar consultas. | Usar chaves autorizadas pelo provedor; se todas atingirem o limite, aguardar a renovação da cota. |
 | Validação de iOS | O projeto inclui iOS, mas a compilação e execução não foram validadas neste computador Windows. | Validar em macOS com Xcode se a avaliação exigir iOS. |
 | Distribuição Android | O APK documentado é de desenvolvimento. A configuração `release` também usa a assinatura de debug. | Configurar assinatura de produção se houver futura distribuição em loja. |
 | Histórico da carteira | A evolução é simulada com as quantidades atuais e preços históricos; não há registro de compras e datas de aquisição. | Acrescentar transações e datas apenas se o projeto for ampliado para calcular rentabilidade real. |

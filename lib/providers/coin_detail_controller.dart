@@ -27,7 +27,7 @@ class CoinDetailController extends ChangeNotifier {
   bool _disposed = false;
   int _quoteGeneration = 0, _historyGeneration = 0;
   Future<void>? _quoteFuture;
-  String? _quoteRequestKey;
+  int? _quoteRequestKey;
 
   Future<void> load() async {
     await Future.wait([loadQuote(), loadHistory()]);
@@ -35,7 +35,7 @@ class CoinDetailController extends ChangeNotifier {
 
   Future<void> loadQuote() {
     if (_disposed) return Future<void>.value();
-    final key = api.apiKey;
+    final key = api.keyConfigurationRevision;
     if (_quoteFuture != null && _quoteRequestKey == key) return _quoteFuture!;
     final generation = ++_quoteGeneration;
     _quoteRequestKey = key;
@@ -47,7 +47,7 @@ class CoinDetailController extends ChangeNotifier {
     return future;
   }
 
-  Future<void> _loadQuote(int generation, String key) async {
+  Future<void> _loadQuote(int generation, int key) async {
     try {
       final result = await api.getCoinDetails(symbol);
       if (_isCurrentQuote(generation, key)) quote = result;
@@ -61,7 +61,7 @@ class CoinDetailController extends ChangeNotifier {
       if (!_disposed && generation == _quoteGeneration) {
         quoteLoading = false;
         _quoteFuture = null;
-        if (api.apiKey != key) {
+        if (api.keyConfigurationRevision != key) {
           await loadQuote();
         } else {
           notifyListeners();
@@ -70,8 +70,10 @@ class CoinDetailController extends ChangeNotifier {
     }
   }
 
-  bool _isCurrentQuote(int generation, String key) =>
-      !_disposed && generation == _quoteGeneration && api.apiKey == key;
+  bool _isCurrentQuote(int generation, int key) =>
+      !_disposed &&
+      generation == _quoteGeneration &&
+      api.keyConfigurationRevision == key;
 
   Future<void> selectPeriod(HistoryPeriod value) async {
     if (_disposed) return;
@@ -84,7 +86,7 @@ class CoinDetailController extends ChangeNotifier {
     if (_disposed) return;
     final generation = ++_historyGeneration;
     final requested = period;
-    final key = api.apiKey;
+    final key = api.keyConfigurationRevision;
     historyLoading = true;
     historyError = null;
     points = [];
@@ -93,11 +95,15 @@ class CoinDetailController extends ChangeNotifier {
       final result = requested == HistoryPeriod.day
           ? await api.getHourlyHistory(symbol, limit: requested.limit)
           : await api.getDailyHistory(symbol, limit: requested.limit);
-      if (!_disposed && generation == _historyGeneration && key == api.apiKey) {
+      if (!_disposed &&
+          generation == _historyGeneration &&
+          key == api.keyConfigurationRevision) {
         points = result.points;
       }
     } catch (error) {
-      if (!_disposed && generation == _historyGeneration && key == api.apiKey) {
+      if (!_disposed &&
+          generation == _historyGeneration &&
+          key == api.keyConfigurationRevision) {
         historyError = error is ApiException
             ? error.message
             : 'Não foi possível carregar o histórico.';
@@ -105,7 +111,7 @@ class CoinDetailController extends ChangeNotifier {
     } finally {
       if (!_disposed && generation == _historyGeneration) {
         historyLoading = false;
-        if (api.apiKey != key) {
+        if (api.keyConfigurationRevision != key) {
           await loadHistory();
         } else {
           notifyListeners();

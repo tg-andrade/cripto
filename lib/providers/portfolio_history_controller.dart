@@ -16,7 +16,7 @@ class PortfolioHistoryController extends ChangeNotifier {
   Future<void> load(List<PortfolioPosition> positions, {int days = 30}) async {
     if (_disposed) return;
     positions = List.of(positions);
-    final key = api.apiKey;
+    final key = api.keyConfigurationRevision;
     final generation = ++_generation;
     loading = positions.isNotEmpty;
     error = null;
@@ -70,11 +70,15 @@ class PortfolioHistoryController extends ChangeNotifier {
               'Não há histórico completo para todos os ativos neste período.',
         );
       }
-      if (!_disposed && generation == _generation && api.apiKey == key) {
+      if (!_disposed &&
+          generation == _generation &&
+          api.keyConfigurationRevision == key) {
         points = combined;
       }
     } catch (exception) {
-      if (!_disposed && generation == _generation && api.apiKey == key) {
+      if (!_disposed &&
+          generation == _generation &&
+          api.keyConfigurationRevision == key) {
         error = exception is ApiException
             ? exception.message
             : 'Não foi possível calcular a evolução da carteira.';
@@ -82,7 +86,7 @@ class PortfolioHistoryController extends ChangeNotifier {
     } finally {
       if (!_disposed && generation == _generation) {
         loading = false;
-        if (api.apiKey != key) {
+        if (api.keyConfigurationRevision != key) {
           await load(positions, days: days);
         } else {
           notifyListeners();

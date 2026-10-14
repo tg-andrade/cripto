@@ -16,12 +16,14 @@ class ApiException implements Exception {
     required this.message,
     this.isOffline = false,
     this.needsApiKey = false,
+    this.isRateLimited = false,
     this.statusCode,
   });
 
   final String message;
   final bool isOffline;
   final bool needsApiKey;
+  final bool isRateLimited;
   final int? statusCode;
 
   @override
@@ -35,7 +37,7 @@ class CryptoApiService {
     Duration timeout = const Duration(seconds: 15),
     this.useQueryAuthentication = kIsWeb,
   }) : _client = client ?? http.Client(),
-       _apiKey = apiKey.trim(),
+       _apiKeys = _normalizeApiKeys([apiKey]),
        // Keep the injectable public parameter separate from internal state.
        // ignore: prefer_initializing_formals
        _timeout = timeout;
@@ -43,14 +45,39 @@ class CryptoApiService {
   final http.Client _client;
   final Duration _timeout;
   final bool useQueryAuthentication;
-  String _apiKey;
+  List<String> _apiKeys;
+  int _nextApiKeyIndex = 0;
+  int _keyConfigurationRevision = 0;
   bool _disposed = false;
 
-  String get apiKey => _apiKey;
-  set apiKey(String value) => _apiKey = value.trim();
-  bool get hasApiKey => _apiKey.isNotEmpty;
+  static List<String> _normalizeApiKeys(Iterable<String> values) => values
+      .map((value) => value.trim())
+      .where((value) => value.isNotEmpty)
+      .toSet()
+      .toList(growable: false);
 
-  void updateApiKey(String value) => apiKey = value;
+  String get apiKey => _apiKeys.isEmpty ? '' : _apiKeys.first;
+  List<String> get apiKeys => List<String>.unmodifiable(_apiKeys);
+  int get keyConfigurationRevision => _keyConfigurationRevision;
+  bool get hasApiKey => _apiKeys.isNotEmpty;
+
+  set apiKey(String value) => updateApiKeys([value]);
+
+  void updateApiKey(String value) => updateApiKeys([value]);
+
+  void updateApiKeys(Iterable<String> values) {
+    final next = _normalizeApiKeys(values);
+    final unchanged =
+        _apiKeys.length == next.length &&
+        List<int>.generate(
+          _apiKeys.length,
+          (index) => index,
+        ).every((index) => _apiKeys[index] == next[index]);
+    if (unchanged) return;
+    _apiKeys = next;
+    _nextApiKeyIndex = 0;
+    _keyConfigurationRevision++;
+  }
 
   // The API limits fsyms by string length; keep every chunk below 300 chars.
   List<List<String>> _symbolChunks(List<String> symbols) {
@@ -223,10 +250,41 @@ class CryptoApiService {
     if (_disposed) {
       throw const ApiException(message: 'O serviço de cotações foi encerrado.');
     }
+    final keys = List<String>.of(_apiKeys);
+    final attempts = keys.isEmpty ? 1 : keys.length;
+    final startIndex = keys.isEmpty ? 0 : _nextApiKeyIndex % keys.length;
+    final revision = _keyConfigurationRevision;
+    if (keys.isNotEmpty) {
+      _nextApiKeyIndex = (startIndex + 1) % keys.length;
+    }
+    ApiException? lastRetryableError;
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      if (attempt > 0 && revision != _keyConfigurationRevision) {
+        throw lastRetryableError!;
+      }
+      final key = keys.isEmpty
+          ? ''
+          : keys[(startIndex + attempt) % keys.length];
+      try {
+        return await _getWithKey(endpoint, parameters, key);
+      } on ApiException catch (error) {
+        final canTryAnotherKey = error.isRateLimited || error.needsApiKey;
+        if (!canTryAnotherKey || attempt + 1 >= attempts) rethrow;
+        lastRetryableError = error;
+      }
+    }
+    throw lastRetryableError!;
+  }
+
+  Future<Map<String, Object?>> _getWithKey(
+    String endpoint,
+    Map<String, String> parameters,
+    String key,
+  ) async {
     // Authorization causes a browser preflight that the legacy API rejects.
     final queryParameters = <String, String>{
       ...parameters,
-      if (hasApiKey && useQueryAuthentication) 'api_key': _apiKey,
+      if (key.isNotEmpty && useQueryAuthentication) 'api_key': key,
     };
     final uri = Uri.https(
       'min-api.cryptocompare.com',
@@ -235,8 +293,8 @@ class CryptoApiService {
     );
     final headers = <String, String>{
       'Accept': 'application/json',
-      if (hasApiKey && !useQueryAuthentication)
-        'Authorization': 'Apikey $_apiKey',
+      if (key.isNotEmpty && !useQueryAuthentication)
+        'Authorization': 'Apikey $key',
     };
     late final http.Response response;
     try {
@@ -295,6 +353,7 @@ class CryptoApiService {
       return ApiException(
         message:
             'O limite de consultas foi atingido. Aguarde e tente novamente.',
+        isRateLimited: true,
         statusCode: statusCode,
       );
     }

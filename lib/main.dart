@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'providers/app_controller.dart';
 import 'services/crypto_api_service.dart';
 import 'services/local_storage_service.dart';
@@ -12,7 +13,9 @@ void main() {
     CryptoHubApp(
       controller: AppController(
         api: CryptoApiService(),
-        storage: LocalStorageService(),
+        storage: LocalStorageService(
+          credentialStorage: const FlutterSecureStorage(),
+        ),
       ),
       ownsController: true,
     ),

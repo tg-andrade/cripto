@@ -3,6 +3,7 @@ import 'dart:convert';
 // Public constructor names stay independent from private storage fields.
 // ignore_for_file: prefer_initializing_formals
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import '../models/coin_info.dart';
@@ -33,19 +34,63 @@ class StoredAppData {
 
 /// Favorites, positions and referenced coin metadata share one JSON document:
 /// a local edit needs one preference write. Quotes and their timestamp use a
-/// second document. API keys are never stored. Inject preferences for tests.
+/// second document. API keys use encrypted platform storage, separate from
+/// SharedPreferences. Inject both stores when needed.
 class LocalStorageService {
-  LocalStorageService({SharedPreferences? preferences})
-    : _preferences = preferences;
+  LocalStorageService({
+    SharedPreferences? preferences,
+    FlutterSecureStorage? credentialStorage,
+  }) : _preferences = preferences,
+       _credentialStorage = credentialStorage;
 
   static const userDataKey = 'cryptohub.user.v1';
   static const quoteCacheKey = 'cryptohub.quotes.v1';
+  static const apiKeysStorageKey = 'cryptohub.api.keys.v1';
 
   SharedPreferences? _preferences;
+  final FlutterSecureStorage? _credentialStorage;
   Future<void> _writeTail = Future<void>.value();
 
   Future<SharedPreferences> get _prefs async =>
       _preferences ??= await SharedPreferences.getInstance();
+
+  /// Returns the saved API key list. Null secure storage is used by tests that
+  /// only exercise portfolio and quote persistence.
+  Future<List<String>> readApiKeys() async {
+    final secureStorage = _credentialStorage;
+    if (secureStorage == null) return const <String>[];
+    final raw = await secureStorage.read(key: apiKeysStorageKey);
+    if (raw == null || raw.isEmpty) return const <String>[];
+    final decoded = jsonDecode(raw);
+    if (decoded is! List) {
+      throw const FormatException('Lista de chaves inválida.');
+    }
+    return decoded
+        .whereType<String>()
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+  }
+
+  /// Stores credentials with the platform's secure storage implementation.
+  Future<void> saveApiKeys(Iterable<String> values) async {
+    final secureStorage = _credentialStorage;
+    if (secureStorage == null) return;
+    final keys = values
+        .map((key) => key.trim())
+        .where((key) => key.isNotEmpty)
+        .toSet()
+        .toList(growable: false);
+    if (keys.isEmpty) {
+      await secureStorage.delete(key: apiKeysStorageKey);
+    } else {
+      await secureStorage.write(
+        key: apiKeysStorageKey,
+        value: jsonEncode(keys),
+      );
+    }
+  }
 
   /// Invalid rows are skipped independently, preserving all valid saved data.
   Future<StoredAppData> read() async {
