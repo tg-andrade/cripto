@@ -4,6 +4,7 @@ import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'providers/app_controller.dart';
 import 'services/crypto_api_service.dart';
 import 'services/local_storage_service.dart';
+import 'services/portfolio_api_service.dart';
 import 'screens/app_shell.dart';
 import 'theme/app_theme.dart';
 
@@ -13,6 +14,7 @@ void main() {
     CryptoHubApp(
       controller: AppController(
         api: CryptoApiService(),
+        portfolioApi: PortfolioApiService(),
         storage: LocalStorageService(
           credentialStorage: const FlutterSecureStorage(),
         ),
@@ -48,6 +50,7 @@ class _CryptoHubAppState extends State<CryptoHubApp> {
     if (widget.ownsController) {
       widget.controller.dispose();
       widget.controller.api.dispose();
+      widget.controller.portfolioApi?.dispose();
     }
     super.dispose();
   }

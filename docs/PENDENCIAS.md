@@ -2,6 +2,7 @@
 
 ## Para concluir a entrega acadêmica
 
+- [ ] Iniciar a API Node.js junto com o aplicativo na demonstração e apresentar pelo menos duas rotas.
 - [ ] Preencher o nome de quem fará a entrega e o nome do colega em [ENTREGA.md](ENTREGA.md).
 - [ ] Publicar no GitHub a documentação e os prints preparados nesta pasta.
 - [ ] Conferir os links e imagens no GitHub após o envio.

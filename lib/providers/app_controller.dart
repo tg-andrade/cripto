@@ -9,9 +9,10 @@ import '../models/news_article.dart';
 import '../models/portfolio_position.dart';
 import '../services/crypto_api_service.dart';
 import '../services/local_storage_service.dart';
+import '../services/portfolio_api_service.dart';
 
 class AppController extends ChangeNotifier {
-  AppController({required this.api, required this.storage}) {
+  AppController({required this.api, required this.storage, this.portfolioApi}) {
     const names = {
       'BTC': 'Bitcoin',
       'ETH': 'Ethereum',
@@ -30,6 +31,7 @@ class AppController extends ChangeNotifier {
 
   final CryptoApiService api;
   final LocalStorageService storage;
+  final PortfolioApiService? portfolioApi;
   final String currency = 'BRL';
 
   List<String> get marketSymbols => const [
@@ -66,6 +68,7 @@ class AppController extends ChangeNotifier {
   String? get catalogError => _catalogError;
   String? get storageError =>
       _userStorageError ?? _storageReadError ?? _cacheStorageError;
+  String? get portfolioApiError => _portfolioApiError;
   DateTime? get lastRefresh => _lastRefresh;
 
   final Map<String, CoinInfo> _coins = {};
@@ -92,6 +95,7 @@ class AppController extends ChangeNotifier {
   String? _userStorageError;
   String? _storageReadError;
   String? _cacheStorageError;
+  String? _portfolioApiError;
   DateTime? _lastRefresh;
   Set<String> _lastAttemptedSymbols = {};
   Future<bool>? _storageLoadFuture;
@@ -177,8 +181,49 @@ class AppController extends ChangeNotifier {
       }
     }
     await _loadSavedData();
+    await _loadPortfolioFromApi();
     if (!_disposed) await refreshMarket();
   }
+
+  Future<void> _loadPortfolioFromApi() async {
+    final service = portfolioApi;
+    if (_disposed || service == null) return;
+    try {
+      final positions = await service.getPortfolio();
+      if (_disposed) return;
+      if (positions.isEmpty && _positions.isNotEmpty) {
+        // Seed a newly created API from the existing on-device wallet once.
+        for (final position in _positions) {
+          await service.saveAsset(position);
+        }
+      } else {
+        _positions = positions;
+      }
+      for (final position in _positions) {
+        _coins[position.symbol] = position.coin;
+      }
+      _portfolioApiError = null;
+      if (_storageReady) {
+        try {
+          await storage.saveUserData(
+            favorites: _favorites,
+            positions: _positions,
+            coins: _coins,
+          );
+        } catch (_) {
+          _userStorageError =
+              'A carteira foi carregada da API, mas não pôde ser guardada neste aparelho.';
+        }
+      }
+    } on PortfolioApiException catch (error) {
+      _portfolioApiError = error.message;
+    } catch (_) {
+      _portfolioApiError = 'Não foi possível carregar a carteira da API.';
+    }
+    _notify();
+  }
+
+  Future<void> refreshPortfolio() => _loadPortfolioFromApi();
 
   Future<bool> _loadSavedData({bool retry = false}) {
     if (_disposed) return Future<bool>.value(false);
@@ -437,7 +482,9 @@ class AppController extends ChangeNotifier {
       }
       final nextCoins = Map<String, CoinInfo>.of(_coins)
         ..[position.symbol] = coin;
-      if (!await _persistUserData(_favorites, next, nextCoins)) return false;
+      if (!await _savePositionToApi(position)) return false;
+      final savedLocally = await _persistUserData(_favorites, next, nextCoins);
+      if (!savedLocally && portfolioApi == null) return false;
       _positions = next;
       _coins[position.symbol] = coin;
       _notify();
@@ -452,12 +499,50 @@ class AppController extends ChangeNotifier {
       final next = _positions
           .where((position) => position.symbol != normalized)
           .toList();
-      if (!await _persistUserData(_favorites, next, _coins)) return false;
+      if (!await _deletePositionFromApi(normalized)) return false;
+      final savedLocally = await _persistUserData(_favorites, next, _coins);
+      if (!savedLocally && portfolioApi == null) return false;
       _positions = next;
       _pruneQuotes();
       _notify();
       return true;
     });
+  }
+
+  Future<bool> _savePositionToApi(PortfolioPosition position) async {
+    final service = portfolioApi;
+    if (service == null) return true;
+    try {
+      await service.saveAsset(position);
+      _portfolioApiError = null;
+      return true;
+    } on PortfolioApiException catch (error) {
+      _portfolioApiError = error.message;
+      _notify();
+      return false;
+    } catch (_) {
+      _portfolioApiError = 'Não foi possível salvar o ativo na API.';
+      _notify();
+      return false;
+    }
+  }
+
+  Future<bool> _deletePositionFromApi(String symbol) async {
+    final service = portfolioApi;
+    if (service == null) return true;
+    try {
+      await service.deleteAsset(symbol);
+      _portfolioApiError = null;
+      return true;
+    } on PortfolioApiException catch (error) {
+      _portfolioApiError = error.message;
+      _notify();
+      return false;
+    } catch (_) {
+      _portfolioApiError = 'Não foi possível remover o ativo pela API.';
+      _notify();
+      return false;
+    }
   }
 
   Future<bool> _persistUserData(
@@ -493,6 +578,9 @@ class AppController extends ChangeNotifier {
         .toList(growable: false);
     final previousConfiguration = api.keyConfigurationRevision;
     api.updateApiKeys(keys);
+    if (api.keyConfigurationRevision != previousConfiguration) {
+      _apiKeyRevision++;
+    }
     try {
       await storage.saveApiKeys(keys);
       _apiKeyStorageError = null;
@@ -501,9 +589,6 @@ class AppController extends ChangeNotifier {
           'As chaves funcionam nesta sessão, mas não foi possível salvá-las neste aparelho.';
     }
     if (_disposed) return;
-    if (api.keyConfigurationRevision != previousConfiguration) {
-      _apiKeyRevision++;
-    }
     final revision = _apiKeyRevision;
     _marketError = null;
     _notify();

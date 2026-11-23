@@ -57,6 +57,7 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
   }
 
   Future<void> _refresh() async {
+    await widget.controller.refreshPortfolio();
     await widget.controller.refreshMarket();
     await _history.load(widget.controller.positions);
   }
@@ -70,6 +71,16 @@ class _PortfolioScreenState extends State<PortfolioScreen> {
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
         children: [
+          if (state.portfolioApiError != null) ...[
+            CryptoCard(
+              color: AppColors.raised,
+              child: Text(
+                'API da carteira: ${state.portfolioApiError}',
+                style: const TextStyle(color: AppColors.accent),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
           if (state.positions.isEmpty)
             EmptyState(
               icon: Icons.account_balance_wallet_outlined,
